@@ -41,7 +41,7 @@ def train_models(training_df: pd.DataFrame) -> dict:
     X = played[FEATURE_COLUMNS]
     y_result = played["result"]
 
-    clf = _build_pipeline(LogisticRegression(max_iter=2000, multi_class="multinomial", C=0.5))
+    clf = _build_pipeline(LogisticRegression(max_iter=2000, C=0.5))
     clf.fit(X, y_result)
 
     # Poisson-regressies vereisen volledige (niet-NaN) rijen; imputer in de
@@ -95,4 +95,6 @@ def predict_matches(models: dict, upcoming_df: pd.DataFrame) -> pd.DataFrame:
         return max(probs, key=probs.get)
 
     out["meest_waarschijnlijk"] = out.apply(_pick_outcome, axis=1)
-    return out.round(3)
+    numeric_cols = out.select_dtypes(include="number").columns
+    out[numeric_cols] = out[numeric_cols].round(3)
+    return out

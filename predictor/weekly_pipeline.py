@@ -29,7 +29,7 @@ def run() -> None:
 
     models = train_models(feature_table)
 
-    upcoming = feature_table[feature_table["status_type"] != "finished"].sort_values("date").head(config.N_UPCOMING_MATCHES)
+    upcoming = feature_table[feature_table["status_type"] == "notstarted"].sort_values("date").head(config.N_UPCOMING_MATCHES)
     if upcoming.empty:
         raise RuntimeError(
             "Geen aankomende Nations League-wedstrijden gevonden in het "
