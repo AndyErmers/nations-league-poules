@@ -57,31 +57,27 @@ Schrijft:
 - `predictor/artifacts/next_predictions.csv`
 - `predictor/artifacts/weekly_email.txt`
 
-## Dagelijkse automation om 09:00 via Claude Code scheduled tasks
+## Dagelijkse automation om 09:00 via GitHub Actions
 
-Ga naar `claude.ai/code/scheduled` (of `/schedule` in de Claude Code CLI) en
-maak een taak met deze instructies, cron dagelijks 09:00:
+`.github/workflows/daily.yml` draait dagelijks om 07:00 UTC (09:00 CEST /
+08:00 CET), volledig op GitHub's eigen infrastructuur — geen lokale pc of
+Claude Code sessie nodig. De workflow:
 
-```
-Je werkt in de repo AndyErmers/nations-league-poules (branch main).
+1. Installeert dependencies en draait `python -m predictor.weekly_pipeline`.
+2. Committet en pusht de bijgewerkte data-bestanden terug naar `main` (met
+   het automatische `GITHUB_TOKEN`, geen handmatige credential nodig).
+3. Mailt `predictor/artifacts/weekly_email.txt` naar andy.ermers@gmail.com.
+4. Mailt bij een mislukte run een korte foutmelding met een link naar de logs.
 
-Doe precies dit:
-1. Installeer dependencies indien nodig: `python -m pip install -r requirements.txt`
-2. Draai de dagelijkse pipeline: `python -m predictor.weekly_pipeline`
-   Dit vernieuwt gespeelde wedstrijden en de FIFA-ranking, herbouwt features,
-   en voorspelt de komende 10 Nations League-wedstrijden.
-3. Lees `predictor/artifacts/weekly_email.txt` en `predictor/artifacts/next_predictions.csv`.
-4. Stuur een e-mail naar andy.ermers@gmail.com met:
-   - Onderwerp: Nations League voorspellingen – komende 10 wedstrijden
-   - Body: de volledige inhoud van weekly_email.txt
-5. Commit en push bijgewerkte data-bestanden terug naar main (matches_raw.csv,
-   matches_clean.csv, fifa_rankings.csv, fifa_rankings_history.csv,
-   training_data.csv, next_predictions.csv, weekly_email.txt) met een korte
-   commit message zoals "Daily Nations League data refresh and predictions".
+**Eenmalige setup (via GitHub, Settings → Secrets and variables → Actions):**
+maak twee *repository secrets* aan zodat de workflow via Gmail SMTP kan
+mailen:
 
-Als iets faalt: mail alsnog een korte foutmelding naar andy.ermers@gmail.com
-met wat er misging.
-```
+- `GMAIL_ADDRESS`: andy.ermers@gmail.com
+- `GMAIL_APP_PASSWORD`: een Gmail
+  [app-wachtwoord](https://myaccount.google.com/apppasswords) voor dat
+  account (vereist 2FA op het account).
 
-Zet bij het aanmaken van de taak "unrestricted branch pushes" aan voor deze
-repo, en zorg dat de Gmail-connector aan die taak gekoppeld is.
+Test daarna de workflow eenmalig handmatig via het "Run workflow"-knopje op
+het Actions-tabblad (`workflow_dispatch`), om te controleren of Sofascore
+GitHub's runner-IP's niet blokkeert en of de mail aankomt.
