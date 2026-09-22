@@ -1,0 +1,11 @@
+date,home_team,away_team,group,prob_home_win,prob_draw,prob_away_win,exp_goals_home,exp_goals_away,predicted_score,meest_waarschijnlijk
+2026-09-24 16:00:00+00:00,Andorra,Malta,"UEFA Nations League, League D, Gr. 1",0.273,0.351,0.377,0.978,1.042,1-1,Uitwinst
+2026-09-24 18:45:00+00:00,Norway,Denmark,"UEFA Nations League, League A, Gr. 4",0.428,0.284,0.289,1.474,1.095,1-1,Thuiswinst
+2026-09-24 18:45:00+00:00,Serbia,Greece,"UEFA Nations League, League A, Gr. 2",0.441,0.288,0.271,1.427,1.056,1-1,Thuiswinst
+2026-09-24 18:45:00+00:00,Netherlands,Germany,"UEFA Nations League, League A, Gr. 2",0.444,0.275,0.281,1.527,1.092,2-1,Thuiswinst
+2026-09-24 18:45:00+00:00,Kosovo,Ireland,"UEFA Nations League, League B, Gr. 3",0.23,0.333,0.437,1.088,1.24,1-1,Uitwinst
+2026-09-24 18:45:00+00:00,Austria,Israel,"UEFA Nations League, League B, Gr. 3",0.765,0.154,0.082,2.007,0.784,2-1,Thuiswinst
+2026-09-24 18:45:00+00:00,Liechtenstein,Lithuania,"UEFA Nations League, League D, Gr. 2",0.078,0.32,0.602,0.684,1.362,1-1,Uitwinst
+2026-09-24 18:45:00+00:00,Portugal,Wales,"UEFA Nations League, League A, Gr. 4",0.676,0.184,0.14,1.939,0.878,2-1,Thuiswinst
+2026-09-25 16:00:00+00:00,Armenia,Latvia,"UEFA Nations League, League C, Gr. 2",0.572,0.259,0.169,1.41,0.861,1-1,Thuiswinst
+2026-09-25 16:00:00+00:00,Georgia,Northern Ireland,"UEFA Nations League, League B, Gr. 2",0.369,0.313,0.319,1.269,1.081,1-1,Thuiswinst
