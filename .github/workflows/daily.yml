@@ -18,10 +18,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
+      # actions/setup-python@v5 faalt op deze runner (MSI-installatiestap
+      # crasht onder de service-account-context) — gebruik in plaats daarvan
+      # de systeembreed geïnstalleerde Python (C:\Program Files\Python312).
       - name: Install dependencies
         shell: bash
         run: python -m pip install -r requirements.txt
