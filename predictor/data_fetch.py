@@ -1,15 +1,16 @@
 """
-Ophalen van ruwe data — volledig gratis, via Sofascore's publieke JSON-API
-(geen account of key nodig):
+Ophalen van ruwe data:
 
   1. UEFA Nations League: groepsfase-wedstrijden (gespeeld + programma) van
-     de laatste N seizoenen.
-  2. FIFA-wereldranglijst (mannen).
+     de laatste N seizoenen — Sofascore's publieke JSON-API.
+  2. FIFA-wereldranglijst (mannen) — ook Sofascore.
+  3. Elo-ratings per land, gebaseerd op ál hun interlands — eloratings.net.
 
-Sofascore is een niet-officiële, ongedocumenteerde bron. De gebruikte
-endpoints zijn op 22-09-2026 handmatig geverifieerd (zie README). Bij fouten
-loggen we duidelijk wat er misging zodat de scheduled task dit in de
-foutmelding-mail kan meenemen.
+Beide bronnen zijn niet-officieel en ongedocumenteerd, en volledig gratis
+(geen account of key nodig). De gebruikte Sofascore-endpoints zijn op
+22-09-2026 handmatig geverifieerd (zie README). Bij fouten loggen we
+duidelijk wat er misging zodat de scheduled task dit in de foutmelding-mail
+kan meenemen.
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ import time
 import requests
 import pandas as pd
 
-from predictor import config
+from predictor import config, eloratings
 
 
 class DataFetchError(Exception):
@@ -66,7 +67,7 @@ def fetch_nations_league_fixtures() -> pd.DataFrame:
                         "fixture_id": ev["id"],
                         "season": season_label,
                         "round": round_no,
-                        "date": pd.to_datetime(ev["startTimestamp"], unit="s"),
+                        "date": pd.to_datetime(ev["startTimestamp"], unit="s", utc=True),
                         "status_type": status_type,
                         "home_team": ev["homeTeam"]["name"],
                         "away_team": ev["awayTeam"]["name"],
@@ -114,12 +115,19 @@ def fetch_fifa_rankings() -> pd.DataFrame:
 
 
 def refresh_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Haalt beide bronnen op en schrijft ze weg als ruwe CSV's."""
+    """Haalt alle bronnen op en schrijft ze weg als ruwe CSV's."""
     matches = fetch_nations_league_fixtures()
     matches.to_csv(config.MATCHES_RAW_CSV, index=False)
 
     rankings = fetch_fifa_rankings()
     rankings.to_csv(config.RANKINGS_CSV, index=False)
+
+    teams = sorted(set(matches["home_team"]) | set(matches["away_team"]))
+    try:
+        elo_history = eloratings.fetch_history(teams)
+    except (eloratings.EloFetchError, requests.RequestException) as e:
+        raise DataFetchError(f"Fout bij ophalen Elo-historie van eloratings.net: {e}") from e
+    elo_history.to_csv(config.ELORATINGS_HISTORY_CSV, index=False)
 
     # Bouw een historische reeks op door elke run toe te voegen i.p.v. te
     # overschrijven, zodat features de ranking-op-matchdatum kunnen gebruiken

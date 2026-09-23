@@ -23,8 +23,9 @@ from predictor.model import train_models, predict_matches
 def run() -> None:
     matches, _rankings = refresh_raw_data()
     rankings_history = pd.read_csv(config.RANKINGS_HISTORY_CSV, parse_dates=["snapshot_date"])
+    eloratings_history = pd.read_csv(config.ELORATINGS_HISTORY_CSV, parse_dates=["date"])
 
-    feature_table = build_feature_table(matches, rankings_history)
+    feature_table = build_feature_table(matches, rankings_history, eloratings_history)
     feature_table.to_csv(config.TRAINING_CSV, index=False)
 
     models = train_models(feature_table)

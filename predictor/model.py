@@ -41,11 +41,11 @@ def train_models(training_df: pd.DataFrame) -> dict:
     X = played[FEATURE_COLUMNS]
     y_result = played["result"]
 
-    # C=0.05: modelvergelijking (verschillende classifiers, feature-sets en
+    # C=0.1: modelvergelijking (verschillende classifiers, feature-sets en
     # datasetgroottes, zie README) wees dit uit als de beste combinatie op
     # deze kleine dataset — sterkere regularisatie dan sklearns default
     # generaliseert merkbaar beter over meerdere cross-validatiesplits.
-    clf = _build_pipeline(LogisticRegression(max_iter=2000, C=0.05))
+    clf = _build_pipeline(LogisticRegression(max_iter=2000, C=0.1))
     clf.fit(X, y_result)
 
     # Poisson-regressies vereisen volledige (niet-NaN) rijen; imputer in de

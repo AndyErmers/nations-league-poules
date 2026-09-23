@@ -2,6 +2,8 @@
 Bouwt de feature-tabel op basis van:
   - matches_raw.csv (Sofascore, groepsfase Nations League)
   - fifa_rankings_history.csv (opgebouwde historische FIFA-ranglijst-snapshots)
+  - eloratings_history.csv (eloratings.net — Elo per land over ál hun
+    interlands, niet alleen Nations League; zie predictor/eloratings.py)
 
 Features per wedstrijd (vanuit het perspectief van de thuisploeg):
   - rolling_points_home / rolling_points_away   : vorm laatste N interlands
@@ -9,17 +11,21 @@ Features per wedstrijd (vanuit het perspectief van de thuisploeg):
   - fifa_home_rank / fifa_away_rank / fifa_rank_diff
   - fifa_home_points / fifa_away_points / fifa_points_diff
   - rest_days_home / rest_days_away             : dagen sinds vorige interland
-  - elo_home / elo_away / elo_diff              : zelf bijgehouden Elo-rating
+  - real_elo_home / real_elo_away / real_elo_diff : Elo-rating (eloratings.net)
 
 FEATURE_COLUMNS (wat het model daadwerkelijk gebruikt) bevat bewust niet
-alle bovenstaande kolommen — modelvergelijking (zie git-historie/README) wees
-uit dat op deze kleine dataset (~600 wedstrijden) een kleine set
-verschil-features (fifa_rank_diff, fifa_points_diff, elo_diff) met een sterk
-geregulariseerde lineaire classifier beter generaliseert dan absolute
-waarden, vormfeatures of complexere modellen (random forest/boosting/SVM):
-die overfitten op zoveel features met zo weinig wedstrijden per land per
-jaar. De overige kolommen blijven wel in matches_clean.csv staan, voor
-eventuele toekomstige experimenten.
+alle bovenstaande kolommen. Modelvergelijking (zie README) doorliep twee
+ronden:
+  1. Een zelf berekende Elo (alleen op Nations League-wedstrijden) met een
+     kleine verschil-feature-set haalde ~57,5% cross-validated accuracy,
+     tegenover 54,4% met alleen FIFA-ranking.
+  2. Vervangen van die zelfgebouwde Elo door eloratings.net's Elo — gebaseerd
+     op ál iemands interlands, dus veel minder ruisgevoelig dan een rating
+     die maar ~10 wedstrijden per land per jaar ziet — bracht dat naar
+     ~62,6%. Extra features (vorm, competitietier, head-to-head, de eigen
+     Elo ernaast) bleken binnen ruis van elkaar te liggen; de eenvoudigste
+     variant wint dus volgens Occam's scheermes. De overige kolommen blijven
+     wel in matches_clean.csv staan, voor eventuele toekomstige experimenten.
 
 Target (alleen voor gespeelde wedstrijden):
   - result: "H" (thuiswinst), "D" (gelijk), "A" (uitwinst)
@@ -27,7 +33,8 @@ Target (alleen voor gespeelde wedstrijden):
 
 Team­namen komen bij matches én rankings allebei van Sofascore, dus die
 matchen vrijwel altijd direct; de alias-dict is een vangnet voor incidentele
-afwijkingen.
+afwijkingen. eloratings.net gebruikt een eigen naamgeving — zie
+predictor/eloratings.TEAM_SLUGS.
 """
 from __future__ import annotations
 
@@ -111,50 +118,29 @@ def _add_rolling_form(matches: pd.DataFrame) -> pd.DataFrame:
     return long_df.set_index(["fixture_id", "team"])[["rolling_points", "rolling_goal_diff", "rest_days"]]
 
 
-def _add_elo_ratings(matches: pd.DataFrame) -> dict[int, tuple[float, float]]:
-    """Bouwt per team een Elo-rating op vanaf config.ELO_INITIAL, chronologisch
-    bijgewerkt na elke gespeelde wedstrijd (World-Football-Elo-stijl: extra
-    K-multiplier naar gelang het doelsaldo, plus een vast thuisvoordeel in de
-    verwachte-uitslagberekening). Voor nog niet gespeelde wedstrijden krijgt
-    elk team zijn laatst bekende rating (of het startgetal, als het nog nooit
-    speelde in de meegegeven data).
+def _merge_eloratings(df: pd.DataFrame, eloratings_history: pd.DataFrame, team_col: str, date_col: str, prefix: str) -> pd.DataFrame:
+    """Koppelt aan elke wedstrijd de Elo-rating van het team zoals die gold
+    vlak vóór de matchdatum (`merge_asof`, net als bij de FIFA-ranking)."""
+    merged_rows = []
+    for team, group in df.groupby(team_col):
+        team_hist = eloratings_history[eloratings_history["team"] == team]
+        if team_hist.empty:
+            group = group.copy()
+            group[prefix] = np.nan
+            merged_rows.append(group)
+            continue
+        g = group.sort_values(date_col)
+        h = team_hist.sort_values("date").rename(columns={"date": "elo_date"})
+        m = pd.merge_asof(g, h[["elo_date", "elo"]], left_on=date_col, right_on="elo_date", direction="backward")
+        if m["elo"].isna().any():
+            m["elo"] = m["elo"].fillna(h.iloc[0]["elo"])
+        m = m.rename(columns={"elo": prefix}).drop(columns=["elo_date"])
+        merged_rows.append(m)
 
-    Retourneert een dict fixture_id -> (elo_home, elo_away) met de rating van
-    vóór de wedstrijd (voor gespeelde duels) resp. de actuele rating (voor
-    aankomende duels) — dus zonder look-ahead naar de eigen uitslag."""
-    elo: dict[str, float] = {}
-    result: dict[int, tuple[float, float]] = {}
-
-    played = matches[matches["status_type"] == "finished"].sort_values("date")
-    for row in played.itertuples():
-        home_elo = elo.get(row.home_team, config.ELO_INITIAL)
-        away_elo = elo.get(row.away_team, config.ELO_INITIAL)
-        result[row.fixture_id] = (home_elo, away_elo)
-
-        expected_home = 1.0 / (1.0 + 10 ** ((away_elo - (home_elo + config.ELO_HOME_ADVANTAGE)) / 400.0))
-        if row.home_goals > row.away_goals:
-            actual_home = 1.0
-        elif row.home_goals == row.away_goals:
-            actual_home = 0.5
-        else:
-            actual_home = 0.0
-        goal_diff = abs(row.home_goals - row.away_goals)
-        goal_multiplier = 1.0 if goal_diff <= 1 else (1.5 if goal_diff == 2 else (11 + goal_diff) / 8.0)
-        delta = config.ELO_K * goal_multiplier * (actual_home - expected_home)
-
-        elo[row.home_team] = home_elo + delta
-        elo[row.away_team] = away_elo - delta
-
-    upcoming = matches[matches["status_type"] != "finished"]
-    for row in upcoming.itertuples():
-        result[row.fixture_id] = (
-            elo.get(row.home_team, config.ELO_INITIAL),
-            elo.get(row.away_team, config.ELO_INITIAL),
-        )
-    return result
+    return pd.concat(merged_rows).sort_index()
 
 
-def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -> pd.DataFrame:
+def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame, eloratings_history: pd.DataFrame) -> pd.DataFrame:
     df = matches.copy()
 
     rankings_history = rankings_history.copy()
@@ -173,10 +159,9 @@ def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -
     df["rest_days_home"] = df.apply(lambda r: form_lookup["rest_days"].get((r["fixture_id"], r["home_team"]), np.nan), axis=1)
     df["rest_days_away"] = df.apply(lambda r: form_lookup["rest_days"].get((r["fixture_id"], r["away_team"]), np.nan), axis=1)
 
-    elo_lookup = _add_elo_ratings(matches)
-    df["elo_home"] = df["fixture_id"].map(lambda fid: elo_lookup.get(fid, (config.ELO_INITIAL, config.ELO_INITIAL))[0])
-    df["elo_away"] = df["fixture_id"].map(lambda fid: elo_lookup.get(fid, (config.ELO_INITIAL, config.ELO_INITIAL))[1])
-    df["elo_diff"] = df["elo_home"] - df["elo_away"]
+    df = _merge_eloratings(df, eloratings_history, "home_team", "date", "real_elo_home")
+    df = _merge_eloratings(df, eloratings_history, "away_team", "date", "real_elo_away")
+    df["real_elo_diff"] = df["real_elo_home"] - df["real_elo_away"]
 
     played_mask = df["status_type"] == "finished"
     df.loc[played_mask, "result"] = np.select(
@@ -189,4 +174,4 @@ def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -
     return df
 
 
-FEATURE_COLUMNS = ["fifa_rank_diff", "fifa_points_diff", "elo_diff"]
+FEATURE_COLUMNS = ["fifa_rank_diff", "fifa_points_diff", "real_elo_home", "real_elo_away", "real_elo_diff"]

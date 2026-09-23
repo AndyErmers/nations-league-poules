@@ -16,6 +16,7 @@ MATCHES_RAW_CSV = DATA_DIR / "matches_raw.csv"
 MATCHES_CLEAN_CSV = DATA_DIR / "matches_clean.csv"
 RANKINGS_CSV = DATA_DIR / "fifa_rankings.csv"
 RANKINGS_HISTORY_CSV = DATA_DIR / "fifa_rankings_history.csv"
+ELORATINGS_HISTORY_CSV = DATA_DIR / "eloratings_history.csv"
 TRAINING_CSV = DATA_DIR / "training_data.csv"
 
 NEXT_PREDICTIONS_CSV = ARTIFACTS_DIR / "next_predictions.csv"
@@ -44,10 +45,3 @@ GROUP_STAGE_ROUNDS = range(1, 7)  # rondes 1 t/m 6
 
 N_UPCOMING_MATCHES = 10
 ROLLING_WINDOW = 5  # aantal laatste interlands voor vormfeatures
-
-# Elo home-veldvoordeel in ratingpunten en K-factor voor de update na elke
-# wedstrijd — zie features._add_elo_ratings. Waarden zijn de gangbare
-# instellingen uit het "World Football Elo Ratings"-systeem.
-ELO_HOME_ADVANTAGE = 65.0
-ELO_K = 20.0
-ELO_INITIAL = 1500.0

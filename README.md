@@ -23,12 +23,15 @@ de enige databron.
   gebruiken de ranking zoals die gold vóór de matchdatum (`merge_asof`),
   i.p.v. altijd de nieuwste ranking op oude wedstrijden te plakken.
 - **Rustdagen** sinds de vorige interland per land.
-- **Eigen Elo-rating** (`predictor.features._add_elo_ratings`): per team
-  chronologisch bijgehouden vanaf 1500, bijgewerkt na elke gespeelde
-  wedstrijd (World-Football-Elo-stijl: K-multiplier naar doelsaldo, vast
-  thuisvoordeel). In tegenstelling tot de FIFA-ranking (waarvan we vóór
-  vandaag geen echte historische snapshots hebben) is Elo nooit "stale" voor
-  oude wedstrijden — puur berekend uit de uitslagen zelf.
+- **Elo-rating van eloratings.net** (`predictor/eloratings.py`): per land
+  berekend over ál hun interlands (WK/EK-kwalificatie, vriendschappelijk,
+  Nations League, eindtoernooien), niet alleen de ~10 Nations
+  League-wedstrijden per jaar die in matches_raw.csv staan. Eerst zelf een
+  Elo gebouwd (alleen op NL-wedstrijden) — dat werkte, maar eloratings.net's
+  bredere basis bleek een veel sterkere feature (zie "Modelkeuze" hieronder).
+  In tegenstelling tot de FIFA-ranking (waarvan we vóór vandaag geen echte
+  historische snapshots hebben) is Elo nooit "stale" voor oude wedstrijden —
+  puur berekend uit de uitslagen zelf.
 - **Geregulariseerde modellen** (multinomiale logistische regressie +
   Poisson-regressie voor de score) i.p.v. een zware boosting-model: met een
   kleine dataset zoals Nations League overfit een complex model snel.
@@ -63,16 +66,49 @@ Uitkomst:
   logistische regressie met een kleine `C` (sterke regularisatie). Met ~600
   wedstrijden en maar een paar interlands per land per jaar overfitten de
   complexere modellen sneller dan ze leren.
-- **Winnende combinatie**: `LogisticRegression(C=0.05)` op
-  `[fifa_rank_diff, fifa_points_diff, elo_diff]` — 5-fold cross-validated
-  accuracy **~57,5%** op 610 wedstrijden (was 54,4% op 472 wedstrijden vóór
-  dit onderzoek), tegenover 33,3% puur gokken en ~41-43% als baseline voor
-  "voorspel altijd de meest voorkomende uitkomst" (thuiswinst).
+- **Winnende combinatie (ronde 1)**: `LogisticRegression(C=0.05)` op
+  `[fifa_rank_diff, fifa_points_diff, elo_diff]` (zelfgebouwde Elo, alleen op
+  NL-wedstrijden) — 5-fold cross-validated accuracy **~57,5%** op 610
+  wedstrijden (was 54,4% op 472 wedstrijden vóór dit onderzoek).
 
-Voeg je later nieuwe features toe (bijv. head-to-head of transfermarkt-
-waarde), test dan opnieuw met dezelfde cross-validatie-aanpak vóór je
-`FEATURE_COLUMNS` aanpast — met deze datasetgrootte is het makkelijk om een
-schijnbare verbetering te meten die eigenlijk ruis is.
+### Ronde 2 (23-09-2026): eloratings.net, walk-forward-validatie, Dixon-Coles
+
+Verdere vraag: kan het nóg beter? Vier dingen uitgeprobeerd:
+
+1. **Elo baseren op ál iemands interlands i.p.v. alleen Nations
+   League** — via [eloratings.net](https://www.eloratings.net) (World
+   Football Elo Ratings), dat per land een `.tsv` met de volledige
+   wedstrijdhistorie-plus-Elo publiceert. Bleek, in tegenstelling tot
+   Sofascore, gewoon bereikbaar vanaf een normale server-IP. Dit leverde
+   verreweg de grootste sprong op: **~57,5% → ~62,6%** cross-validated
+   accuracy (10-seed gemiddelde, zie hieronder voor de robuustheidscheck).
+   Reden: de zelfgebouwde Elo zag maar ~10 wedstrijden per land per jaar en
+   was daardoor te ruisgevoelig; eloratings.net's Elo ziet alles.
+2. **Walk-forward-validatie** (trainen op alles vóór datum X, testen op wat
+   erna komt, 5 opeenvolgende blokken) als eerlijkere schatting dan
+   willekeurige k-fold: **~60,3%** gemiddeld — iets lager dan de
+   random-CV-schatting (verwacht, met kleine testblokken van 61 wedstrijden
+   en veel spreiding per blok: 51%–75%), maar bevestigt dat het model ook
+   vooruit in de tijd generaliseert, niet alleen binnen dezelfde periode.
+3. **Dixon-Coles-achtig doelpuntenmodel** (thuis/uit-Poisson-scores samen
+   gebruiken om H/D/A-kansen wiskundig af te leiden, i.p.v. een aparte
+   classifier): **60,2%**, iets lager dan de gewone multinomiale classifier
+   (62,8% op dezelfde split). De classifier-aanpak blijft dus staan.
+4. **Extra features naast de nieuwe Elo** (vorm, competitietier,
+   head-to-head, de oude zelfgebouwde Elo ernaast) zaten over 10 random
+   seeds allemaal binnen elkaars ruismarge (std ~0,5-0,7 procentpunt) — dus
+   koos de eenvoudigste variant: `[fifa_rank_diff, fifa_points_diff,
+   real_elo_home, real_elo_away, real_elo_diff]` met `LogisticRegression(C=0.1)`.
+
+**Huidige winnaar**: 610 wedstrijden, 5 features hierboven, cross-validated
+accuracy **~62,6%** (10-seed gemiddelde) / **60,3%** (walk-forward, eerlijker
+maar met meer spreiding) — tegenover 33,3% puur gokken en ~43% voor "altijd
+de meest voorkomende uitkomst voorspellen".
+
+Voeg je later nieuwe features toe, test dan opnieuw met dezelfde
+cross-validatie-aanpak (en idealiter ook walk-forward + meerdere seeds) vóór
+je `FEATURE_COLUMNS` aanpast — met deze datasetgrootte is het makkelijk om
+een schijnbare verbetering te meten die eigenlijk ruis is.
 
 ## Databron-details (belangrijk om te weten)
 
@@ -88,6 +124,17 @@ deze endpoints handmatig geverifieerd (zie `predictor/config.py`):
 
 Omdat het ongedocumenteerd is, kan Sofascore de structuur wijzigen. Draai bij
 twijfel `python -m predictor.data_fetch` los en controleer de output.
+
+**Sofascore blokkeert cloud/datacenter-IP's** (bevestigd: 403 Forbidden op
+alle endpoints, ook de homepage, vanaf zowel deze coding-omgeving als
+GitHub-hosted Actions-runners). De dagelijkse workflow draait daarom op een
+self-hosted runner (zie hieronder) — een gewone thuis-IP wordt niet
+geblokkeerd.
+
+`predictor/eloratings.py` haalt daarnaast per land de wedstrijdhistorie op
+van [eloratings.net](https://www.eloratings.net) (`/<Team>.tsv`, teamnamen in
+`TEAM_SLUGS`). Dat is, in tegenstelling tot Sofascore, wél gewoon bereikbaar
+vanaf een normale server-IP.
 
 ## Setup
 
@@ -105,8 +152,12 @@ Schrijft:
 ## Dagelijkse automation om 09:00 via GitHub Actions
 
 `.github/workflows/daily.yml` draait dagelijks om 07:00 UTC (09:00 CEST /
-08:00 CET), volledig op GitHub's eigen infrastructuur — geen lokale pc of
-Claude Code sessie nodig. De workflow:
+08:00 CET) via GitHub Actions, op een **self-hosted runner** (een klein
+achtergrondproces op een gewone pc/server) — niet op GitHub's standaard
+`ubuntu-latest`-runners, want Sofascore blokkeert die IP-reeksen (zie
+"Databron-details"). GitHub blijft de trigger/orkestratie en logs doen; de
+pipeline zelf draait op een IP dat niet geblokkeerd is. Geen Claude Code
+sessie nodig, wel moet de machine met de runner-service aanstaan. De workflow:
 
 1. Installeert dependencies en draait `python -m predictor.weekly_pipeline`.
 2. Committet en pusht de bijgewerkte data-bestanden terug naar `main` (met
