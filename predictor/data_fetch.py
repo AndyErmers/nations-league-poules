@@ -137,7 +137,7 @@ def refresh_raw_data() -> tuple[pd.DataFrame, pd.DataFrame]:
     rankings_snapshot["snapshot_date"] = snapshot_date
 
     if config.RANKINGS_HISTORY_CSV.exists():
-        history = pd.read_csv(config.RANKINGS_HISTORY_CSV, parse_dates=["snapshot_date"])
+        history = pd.read_csv(config.RANKINGS_HISTORY_CSV, parse_dates=["snapshot_date"], encoding="utf-8")
         already_today = (history["snapshot_date"] == snapshot_date).any()
         if not already_today:
             history = pd.concat([history, rankings_snapshot], ignore_index=True)

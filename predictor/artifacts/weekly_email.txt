@@ -1,39 +1,39 @@
 Nations League voorspellingen — komende 10 wedstrijden
 ============================================================
-Model cross-val nauwkeurigheid (5-fold): 62.8%
+Model cross-val nauwkeurigheid (5-fold): 62.6%
 Getraind op 610 gespeelde wedstrijden.
 
 24-09-2026  Andorra - Malta  (UEFA Nations League, League D, Gr. 1)
   Kans: thuis 12% | gelijk 36% | uit 52%
   Verwachte score: 0-1  ->  Uitwinst
 
-24-09-2026  Serbia - Greece  (UEFA Nations League, League A, Gr. 2)
-  Kans: thuis 40% | gelijk 29% | uit 30%
-  Verwachte score: 1-0  ->  Thuiswinst
-
 24-09-2026  Austria - Israel  (UEFA Nations League, League B, Gr. 3)
   Kans: thuis 74% | gelijk 17% | uit 9%
   Verwachte score: 2-0  ->  Thuiswinst
 
-24-09-2026  Norway - Denmark  (UEFA Nations League, League A, Gr. 4)
-  Kans: thuis 60% | gelijk 23% | uit 17%
-  Verwachte score: 1-0  ->  Thuiswinst
+24-09-2026  Liechtenstein - Lithuania  (UEFA Nations League, League D, Gr. 2)
+  Kans: thuis 2% | gelijk 24% | uit 74%
+  Verwachte score: 0-1  ->  Uitwinst
 
 24-09-2026  Kosovo - Ireland  (UEFA Nations League, League B, Gr. 3)
   Kans: thuis 46% | gelijk 32% | uit 23%
-  Verwachte score: 1-0  ->  Thuiswinst
-
-24-09-2026  Netherlands - Germany  (UEFA Nations League, League A, Gr. 2)
-  Kans: thuis 57% | gelijk 23% | uit 20%
   Verwachte score: 1-0  ->  Thuiswinst
 
 24-09-2026  Portugal - Wales  (UEFA Nations League, League A, Gr. 4)
   Kans: thuis 88% | gelijk 9% | uit 3%
   Verwachte score: 2-0  ->  Thuiswinst
 
-24-09-2026  Liechtenstein - Lithuania  (UEFA Nations League, League D, Gr. 2)
-  Kans: thuis 2% | gelijk 24% | uit 74%
-  Verwachte score: 0-1  ->  Uitwinst
+24-09-2026  Serbia - Greece  (UEFA Nations League, League A, Gr. 2)
+  Kans: thuis 40% | gelijk 29% | uit 30%
+  Verwachte score: 1-0  ->  Thuiswinst
+
+24-09-2026  Netherlands - Germany  (UEFA Nations League, League A, Gr. 2)
+  Kans: thuis 57% | gelijk 23% | uit 20%
+  Verwachte score: 1-0  ->  Thuiswinst
+
+24-09-2026  Norway - Denmark  (UEFA Nations League, League A, Gr. 4)
+  Kans: thuis 60% | gelijk 23% | uit 17%
+  Verwachte score: 1-0  ->  Thuiswinst
 
 25-09-2026  Armenia - Latvia  (UEFA Nations League, League C, Gr. 2)
   Kans: thuis 54% | gelijk 30% | uit 16%

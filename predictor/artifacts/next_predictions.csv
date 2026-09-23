@@ -1,11 +1,11 @@
 date,home_team,away_team,group,prob_home_win,prob_draw,prob_away_win,exp_goals_home,exp_goals_away,predicted_score,meest_waarschijnlijk
 2026-09-24 16:00:00+00:00,Andorra,Malta,"UEFA Nations League, League D, Gr. 1",0.118,0.36,0.522,0.892,1.141,0-1,Uitwinst
-2026-09-24 18:45:00+00:00,Serbia,Greece,"UEFA Nations League, League A, Gr. 2",0.405,0.291,0.304,1.378,1.014,1-0,Thuiswinst
 2026-09-24 18:45:00+00:00,Austria,Israel,"UEFA Nations League, League B, Gr. 3",0.736,0.17,0.094,2.003,0.722,2-0,Thuiswinst
-2026-09-24 18:45:00+00:00,Norway,Denmark,"UEFA Nations League, League A, Gr. 4",0.604,0.229,0.167,1.601,0.964,1-0,Thuiswinst
-2026-09-24 18:45:00+00:00,Kosovo,Ireland,"UEFA Nations League, League B, Gr. 3",0.455,0.319,0.226,1.243,1.094,1-0,Thuiswinst
-2026-09-24 18:45:00+00:00,Netherlands,Germany,"UEFA Nations League, League A, Gr. 2",0.569,0.233,0.198,1.601,0.979,1-0,Thuiswinst
-2026-09-24 18:45:00+00:00,Portugal,Wales,"UEFA Nations League, League A, Gr. 4",0.878,0.094,0.028,2.304,0.676,2-0,Thuiswinst
 2026-09-24 18:45:00+00:00,Liechtenstein,Lithuania,"UEFA Nations League, League D, Gr. 2",0.021,0.243,0.737,0.587,1.603,0-1,Uitwinst
+2026-09-24 18:45:00+00:00,Kosovo,Ireland,"UEFA Nations League, League B, Gr. 3",0.455,0.319,0.226,1.243,1.094,1-0,Thuiswinst
+2026-09-24 18:45:00+00:00,Portugal,Wales,"UEFA Nations League, League A, Gr. 4",0.878,0.094,0.028,2.304,0.676,2-0,Thuiswinst
+2026-09-24 18:45:00+00:00,Serbia,Greece,"UEFA Nations League, League A, Gr. 2",0.405,0.291,0.304,1.378,1.014,1-0,Thuiswinst
+2026-09-24 18:45:00+00:00,Netherlands,Germany,"UEFA Nations League, League A, Gr. 2",0.569,0.233,0.198,1.601,0.979,1-0,Thuiswinst
+2026-09-24 18:45:00+00:00,Norway,Denmark,"UEFA Nations League, League A, Gr. 4",0.604,0.229,0.167,1.601,0.964,1-0,Thuiswinst
 2026-09-25 16:00:00+00:00,Armenia,Latvia,"UEFA Nations League, League C, Gr. 2",0.539,0.305,0.155,1.419,0.807,1-0,Thuiswinst
 2026-09-25 16:00:00+00:00,Georgia,Northern Ireland,"UEFA Nations League, League B, Gr. 2",0.506,0.297,0.196,1.365,0.969,1-0,Thuiswinst

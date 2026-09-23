@@ -75,6 +75,7 @@ def _merge_ranking(df: pd.DataFrame, rankings_history: pd.DataFrame, team_col: s
             left_on=date_col, right_on="snapshot_date",
             direction="backward",
         )
+        m.index = g.index  # merge_asof reset dit naar 0..n-1 per groep — herstel de originele (unieke) rij-index
         if m["rank"].isna().any():
             fallback = h.iloc[0]
             m["rank"] = m["rank"].fillna(fallback["rank"])
@@ -132,6 +133,7 @@ def _merge_eloratings(df: pd.DataFrame, eloratings_history: pd.DataFrame, team_c
         g = group.sort_values(date_col)
         h = team_hist.sort_values("date").rename(columns={"date": "elo_date"})
         m = pd.merge_asof(g, h[["elo_date", "elo"]], left_on=date_col, right_on="elo_date", direction="backward")
+        m.index = g.index  # merge_asof reset dit naar 0..n-1 per groep — herstel de originele (unieke) rij-index
         if m["elo"].isna().any():
             m["elo"] = m["elo"].fillna(h.iloc[0]["elo"])
         m = m.rename(columns={"elo": prefix}).drop(columns=["elo_date"])
