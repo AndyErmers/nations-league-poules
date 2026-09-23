@@ -18,7 +18,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, PoissonRegressor
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 
@@ -41,7 +41,11 @@ def train_models(training_df: pd.DataFrame) -> dict:
     X = played[FEATURE_COLUMNS]
     y_result = played["result"]
 
-    clf = _build_pipeline(LogisticRegression(max_iter=2000, C=0.5))
+    # C=0.05: modelvergelijking (verschillende classifiers, feature-sets en
+    # datasetgroottes, zie README) wees dit uit als de beste combinatie op
+    # deze kleine dataset — sterkere regularisatie dan sklearns default
+    # generaliseert merkbaar beter over meerdere cross-validatiesplits.
+    clf = _build_pipeline(LogisticRegression(max_iter=2000, C=0.05))
     clf.fit(X, y_result)
 
     # Poisson-regressies vereisen volledige (niet-NaN) rijen; imputer in de
@@ -55,7 +59,8 @@ def train_models(training_df: pd.DataFrame) -> dict:
     # Simpele cross-validatie als sanity check, wordt meegenomen in de mail.
     cv_scores = None
     if len(played) >= 15:
-        cv_scores = cross_val_score(clf, X, y_result, cv=5, scoring="accuracy")
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+        cv_scores = cross_val_score(clf, X, y_result, cv=cv, scoring="accuracy")
 
     models = {
         "classifier": clf,

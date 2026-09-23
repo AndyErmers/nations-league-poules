@@ -9,6 +9,17 @@ Features per wedstrijd (vanuit het perspectief van de thuisploeg):
   - fifa_home_rank / fifa_away_rank / fifa_rank_diff
   - fifa_home_points / fifa_away_points / fifa_points_diff
   - rest_days_home / rest_days_away             : dagen sinds vorige interland
+  - elo_home / elo_away / elo_diff              : zelf bijgehouden Elo-rating
+
+FEATURE_COLUMNS (wat het model daadwerkelijk gebruikt) bevat bewust niet
+alle bovenstaande kolommen — modelvergelijking (zie git-historie/README) wees
+uit dat op deze kleine dataset (~600 wedstrijden) een kleine set
+verschil-features (fifa_rank_diff, fifa_points_diff, elo_diff) met een sterk
+geregulariseerde lineaire classifier beter generaliseert dan absolute
+waarden, vormfeatures of complexere modellen (random forest/boosting/SVM):
+die overfitten op zoveel features met zo weinig wedstrijden per land per
+jaar. De overige kolommen blijven wel in matches_clean.csv staan, voor
+eventuele toekomstige experimenten.
 
 Target (alleen voor gespeelde wedstrijden):
   - result: "H" (thuiswinst), "D" (gelijk), "A" (uitwinst)
@@ -100,6 +111,49 @@ def _add_rolling_form(matches: pd.DataFrame) -> pd.DataFrame:
     return long_df.set_index(["fixture_id", "team"])[["rolling_points", "rolling_goal_diff", "rest_days"]]
 
 
+def _add_elo_ratings(matches: pd.DataFrame) -> dict[int, tuple[float, float]]:
+    """Bouwt per team een Elo-rating op vanaf config.ELO_INITIAL, chronologisch
+    bijgewerkt na elke gespeelde wedstrijd (World-Football-Elo-stijl: extra
+    K-multiplier naar gelang het doelsaldo, plus een vast thuisvoordeel in de
+    verwachte-uitslagberekening). Voor nog niet gespeelde wedstrijden krijgt
+    elk team zijn laatst bekende rating (of het startgetal, als het nog nooit
+    speelde in de meegegeven data).
+
+    Retourneert een dict fixture_id -> (elo_home, elo_away) met de rating van
+    vóór de wedstrijd (voor gespeelde duels) resp. de actuele rating (voor
+    aankomende duels) — dus zonder look-ahead naar de eigen uitslag."""
+    elo: dict[str, float] = {}
+    result: dict[int, tuple[float, float]] = {}
+
+    played = matches[matches["status_type"] == "finished"].sort_values("date")
+    for row in played.itertuples():
+        home_elo = elo.get(row.home_team, config.ELO_INITIAL)
+        away_elo = elo.get(row.away_team, config.ELO_INITIAL)
+        result[row.fixture_id] = (home_elo, away_elo)
+
+        expected_home = 1.0 / (1.0 + 10 ** ((away_elo - (home_elo + config.ELO_HOME_ADVANTAGE)) / 400.0))
+        if row.home_goals > row.away_goals:
+            actual_home = 1.0
+        elif row.home_goals == row.away_goals:
+            actual_home = 0.5
+        else:
+            actual_home = 0.0
+        goal_diff = abs(row.home_goals - row.away_goals)
+        goal_multiplier = 1.0 if goal_diff <= 1 else (1.5 if goal_diff == 2 else (11 + goal_diff) / 8.0)
+        delta = config.ELO_K * goal_multiplier * (actual_home - expected_home)
+
+        elo[row.home_team] = home_elo + delta
+        elo[row.away_team] = away_elo - delta
+
+    upcoming = matches[matches["status_type"] != "finished"]
+    for row in upcoming.itertuples():
+        result[row.fixture_id] = (
+            elo.get(row.home_team, config.ELO_INITIAL),
+            elo.get(row.away_team, config.ELO_INITIAL),
+        )
+    return result
+
+
 def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -> pd.DataFrame:
     df = matches.copy()
 
@@ -119,6 +173,11 @@ def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -
     df["rest_days_home"] = df.apply(lambda r: form_lookup["rest_days"].get((r["fixture_id"], r["home_team"]), np.nan), axis=1)
     df["rest_days_away"] = df.apply(lambda r: form_lookup["rest_days"].get((r["fixture_id"], r["away_team"]), np.nan), axis=1)
 
+    elo_lookup = _add_elo_ratings(matches)
+    df["elo_home"] = df["fixture_id"].map(lambda fid: elo_lookup.get(fid, (config.ELO_INITIAL, config.ELO_INITIAL))[0])
+    df["elo_away"] = df["fixture_id"].map(lambda fid: elo_lookup.get(fid, (config.ELO_INITIAL, config.ELO_INITIAL))[1])
+    df["elo_diff"] = df["elo_home"] - df["elo_away"]
+
     played_mask = df["status_type"] == "finished"
     df.loc[played_mask, "result"] = np.select(
         [df.loc[played_mask, "home_goals"] > df.loc[played_mask, "away_goals"],
@@ -130,9 +189,4 @@ def build_feature_table(matches: pd.DataFrame, rankings_history: pd.DataFrame) -
     return df
 
 
-FEATURE_COLUMNS = [
-    "fifa_home_rank", "fifa_away_rank", "fifa_rank_diff", "fifa_points_diff",
-    "rolling_points_home", "rolling_points_away",
-    "rolling_gd_home", "rolling_gd_away",
-    "rest_days_home", "rest_days_away",
-]
+FEATURE_COLUMNS = ["fifa_rank_diff", "fifa_points_diff", "elo_diff"]

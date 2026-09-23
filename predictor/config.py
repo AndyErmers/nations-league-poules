@@ -39,8 +39,15 @@ FIFA_RANKING_TYPE = 2
 # zit achter een ander endpoint dat niet via de simpele round-index werkt en
 # wordt bewust overgeslagen — een kleine, acceptabele beperking t.o.v. de
 # volledige groepsfase-dataset.
-N_HISTORICAL_SEASONS = 4
+N_HISTORICAL_SEASONS = 5
 GROUP_STAGE_ROUNDS = range(1, 7)  # rondes 1 t/m 6
 
 N_UPCOMING_MATCHES = 10
 ROLLING_WINDOW = 5  # aantal laatste interlands voor vormfeatures
+
+# Elo home-veldvoordeel in ratingpunten en K-factor voor de update na elke
+# wedstrijd — zie features._add_elo_ratings. Waarden zijn de gangbare
+# instellingen uit het "World Football Elo Ratings"-systeem.
+ELO_HOME_ADVANTAGE = 65.0
+ELO_K = 20.0
+ELO_INITIAL = 1500.0

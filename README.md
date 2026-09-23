@@ -23,11 +23,56 @@ de enige databron.
   gebruiken de ranking zoals die gold vóór de matchdatum (`merge_asof`),
   i.p.v. altijd de nieuwste ranking op oude wedstrijden te plakken.
 - **Rustdagen** sinds de vorige interland per land.
+- **Eigen Elo-rating** (`predictor.features._add_elo_ratings`): per team
+  chronologisch bijgehouden vanaf 1500, bijgewerkt na elke gespeelde
+  wedstrijd (World-Football-Elo-stijl: K-multiplier naar doelsaldo, vast
+  thuisvoordeel). In tegenstelling tot de FIFA-ranking (waarvan we vóór
+  vandaag geen echte historische snapshots hebben) is Elo nooit "stale" voor
+  oude wedstrijden — puur berekend uit de uitslagen zelf.
 - **Geregulariseerde modellen** (multinomiale logistische regressie +
   Poisson-regressie voor de score) i.p.v. een zware boosting-model: met een
   kleine dataset zoals Nations League overfit een complex model snel.
 - **Cross-validatie-score** wordt meegenomen in de e-mail zodra er genoeg
   data is.
+
+## Modelkeuze: waarom deze features en dit model
+
+Op 23-09-2026 is systematisch uitgeprobeerd wat de cross-validated accuracy
+(5-fold + 10-fold gemiddeld, `StratifiedKFold`) het meest verbetert:
+verschillende classifiers (logistic regression, random forest, extra trees,
+gradient boosting, HistGradientBoosting, XGBoost, LightGBM, SVM, KNN,
+Gaussian NB, MLP, voting/stacking-ensembles), features (absolute
+FIFA-rank/-punten vs. alleen het verschil, vormfeatures met en zonder
+doelpunten los van doelsaldo, competitietier, head-to-head-geschiedenis,
+Elo) en datasetgrootte (4 vs. 5 seizoenen historie).
+
+Uitkomst:
+
+- **Meer trainingsdata helpt merkbaar**: `N_HISTORICAL_SEASONS` ging van 4
+  naar 5 (seizoen 18/19 erbij, 472 → 610 gespeelde wedstrijden), goed voor
+  ~+2 procentpunt.
+- **Een kleine set verschil-features wint van absolute waarden of een
+  uitgebreide feature-set**: `fifa_rank_diff`, `fifa_points_diff` en
+  `elo_diff` (3 kolommen) presteren beter dan varianten met ook de absolute
+  FIFA-rank/Elo per land, vormfeatures, competitietier of
+  head-to-head-historie erbij — die extra kolommen voegden ruis toe in
+  plaats van signaal op deze kleine dataset.
+- **Complexere modellen verliezen het van sterk geregulariseerde lineaire
+  modellen**: random forest, gradient boosting (incl. XGBoost/LightGBM), SVM
+  met RBF-kernel, KNN en neurale netjes scoorden allemaal lager dan
+  logistische regressie met een kleine `C` (sterke regularisatie). Met ~600
+  wedstrijden en maar een paar interlands per land per jaar overfitten de
+  complexere modellen sneller dan ze leren.
+- **Winnende combinatie**: `LogisticRegression(C=0.05)` op
+  `[fifa_rank_diff, fifa_points_diff, elo_diff]` — 5-fold cross-validated
+  accuracy **~57,5%** op 610 wedstrijden (was 54,4% op 472 wedstrijden vóór
+  dit onderzoek), tegenover 33,3% puur gokken en ~41-43% als baseline voor
+  "voorspel altijd de meest voorkomende uitkomst" (thuiswinst).
+
+Voeg je later nieuwe features toe (bijv. head-to-head of transfermarkt-
+waarde), test dan opnieuw met dezelfde cross-validatie-aanpak vóór je
+`FEATURE_COLUMNS` aanpast — met deze datasetgrootte is het makkelijk om een
+schijnbare verbetering te meten die eigenlijk ruis is.
 
 ## Databron-details (belangrijk om te weten)
 
